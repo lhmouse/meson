@@ -1967,9 +1967,9 @@ class Interpreter(InterpreterBase, HoldableObject):
         else:
             vcs = mesonlib.detect_vcs(source_dir)
             if vcs:
-                mlog.log('Found {} repository at {}'.format(vcs['name'], vcs['wc_dir']))
-                vcs_cmd = vcs['get_rev'].split()
-                regex_selector = vcs['rev_regex']
+                mlog.log('Found {} repository at {}'.format(vcs.name, vcs.wc_dir))
+                vcs_cmd = vcs.get_rev
+                regex_selector = vcs.rev_regex
             else:
                 vcs_cmd = [' '] # executing this cmd will fail in vcstagger.py and force to use the fallback string
         # vcstagger.py parameters: infile, outfile, fallback, source_dir, replace_string, regex_selector, command...
@@ -2539,7 +2539,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                                       follow_symlinks=kwargs['follow_symlinks'])
 
     def install_data_impl(self, sources: T.List[mesonlib.File], install_dir: str,
-                          install_mode: FileMode, rename: T.Optional[str],
+                          install_mode: FileMode, rename: T.Optional[T.List[str]],
                           tag: T.Optional[str],
                           install_data_type: T.Optional[str] = None,
                           preserve_path: bool = False,
@@ -3520,6 +3520,8 @@ class Interpreter(InterpreterBase, HoldableObject):
     @noSecondLevelHolderResolving
     def func_set_variable(self, node: mparser.BaseNode, args: T.Tuple[str, object], kwargs: 'TYPE_kwargs') -> None:
         varname, value = args
+        if mparser.IDENT_RE.fullmatch(varname) is None:
+            raise InvalidCode('Invalid variable name: ' + varname)
         self.set_variable(varname, value, holderify=True)
 
     @typed_pos_args('get_variable', (str, Disabler), optargs=[object])

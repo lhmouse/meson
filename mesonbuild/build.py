@@ -1364,7 +1364,8 @@ class BuildTarget(Target):
                                                               [],
                                                               dep.get_compile_args(),
                                                               dep.get_link_args(),
-                                                              [], [], [], [], [], {}, [], [], [])
+                                                              [], [], [], [], [], {}, [], [], [],
+                                                              dep.name)
                     self.external_deps.append(extpart)
                 # Deps of deps.
                 self.add_deps(dep.ext_deps)
@@ -1499,7 +1500,7 @@ class BuildTarget(Target):
         if not self.uses_rust() and links_with_rust_abi:
             raise InvalidArguments(f'Try to link Rust ABI library {t.name!r} with a non-Rust target {self.name!r}')
         if self.for_machine is not t.for_machine and (not links_with_rust_abi or t.rust_crate_type != 'proc-macro'):
-            msg = f'Tried to tied to mix a {t.for_machine} library ("{t.name}") with a {self.for_machine} target "{self.name}"'
+            msg = f'Tried to mix a {t.for_machine} library ("{t.name}") with a {self.for_machine} target "{self.name}"'
             if self.environment.is_cross_build():
                 raise InvalidArguments(msg + ' This is not possible in a cross build.')
             else:
@@ -2018,6 +2019,8 @@ class Executable(BuildTarget):
             elif ('c' in self.compilers and self.compilers['c'].get_id() in {'mwccarm', 'mwcceppc'} or
                   'cpp' in self.compilers and self.compilers['cpp'].get_id() in {'mwccarm', 'mwcceppc'}):
                 self.suffix = 'nef'
+            elif ('c' in self.compilers and self.compilers['c'].get_id() == 'tasking'):
+                self.suffix = 'elf'
             else:
                 self.suffix = machine.get_exe_suffix()
         self.filename = self.name
@@ -2173,7 +2176,10 @@ class StaticLibrary(BuildTarget):
                 elif self.rust_crate_type == 'staticlib':
                     self.suffix = 'a'
             else:
-                self.suffix = 'a'
+                if 'c' in self.compilers and self.compilers['c'].get_id() == 'tasking':
+                    self.suffix = 'ma' if self.options.get_value('b_lto') and not self.prelink else 'a'
+                else:
+                    self.suffix = 'a'
         self.filename = self.prefix + self.name + '.' + self.suffix
         self.outputs[0] = self.filename
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 import abc
 import functools
 import os
-import multiprocessing
 import pathlib
 import re
 import subprocess
@@ -610,15 +609,16 @@ class GnuCompiler(GnuLikeCompiler):
         # error.
         return ['-Werror=attributes']
 
-    def get_prelink_args(self, prelink_name: str, obj_list: T.List[str]) -> T.List[str]:
-        return ['-r', '-o', prelink_name] + obj_list
+    def get_prelink_args(self, prelink_name: str, obj_list: T.List[str]) -> T.Tuple[T.List[str], T.List[str]]:
+        return [prelink_name], ['-r', '-o', prelink_name] + obj_list
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
         if threads == 0:
             if self._has_lto_auto_support:
                 return ['-flto=auto']
-            # This matches clang's behavior of using the number of cpus
-            return [f'-flto={multiprocessing.cpu_count()}']
+            # This matches clang's behavior of using the number of cpus, but
+            # obeying meson's MESON_NUM_PROCESSES convention.
+            return [f'-flto={mesonlib.determine_worker_count()}']
         elif threads > 0:
             return [f'-flto={threads}']
         return super().get_lto_compile_args(threads=threads)
